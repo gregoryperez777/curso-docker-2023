@@ -1,0 +1,83 @@
+version: '3'
+
+
+services:
+  
+  # contruir la imagen del dockerfile 
+  # en el docker-compose
+  app:
+
+    build:
+      # context -> donde quiero que busque el Dockerfile
+      context: .
+
+      # target -> especifica el stage a ejecutar el cual esta nombrado en el dockerfile y 
+      # se puede usar target solo cuando trabajamos con multi-stage
+      target: ${STAGE}
+      # dockerfile -> se puede cambiar el nombre del Dockerfile por default es Dockerfile
+      dockerfile: Dockerfile
+
+    # Al construir la imagen se le coloca este nombre y tag
+    image: gperez991/teslo-shop-backend:2.5.0
+    container_name: nest-app
+    ports:
+      - ${PORT}:${PORT}
+
+    # Definimos las variables de entornos porque en el
+    # Dockerfile no las copiamos por ende no existen 
+    # en la imagen
+
+    environment:
+      APP_VERSION: ${APP_VERSION}
+      STAGE: ${STAGE}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USERNAME: ${DB_USERNAME}
+      PORT: ${PORT}
+      HOST_API: ${HOST_API}
+      JWT_SECRET: ${JWT_SECRET}  
+  
+  db:
+    image: postgres:14.3
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    container_name: ${DB_NAME}
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+
+
+volumes:
+  postgres-db:
+    external: false
+
+# Nota importante 
+# Utilizar docker compose build para construir o reconstruir servicio
+# sino usar 
+# docker compose down --> detiene y remueve los contenedore y redes
+# docker compose down --volumes --> detiene y remueves los contenedore redes y volumenes
+
+
+# para construir la imagen de produccion usar
+# docker compose -f docker-compose.prod.yml build
+
+# tambien se puede arrancar con el comando
+# docker compose -f docker-compose.prod.yml up
+
+# AHORA MUY IMPORTANTE a docker compose se le puede decir que contruya 
+# un servicio en particular 
+# docker compose -f docker-compose.prod.yml build <nombre del servicio>
+
+# ejemplo
+# docker compose -f docker-compose.prod.yml build app
+# de esta forma construiremos solo nuestro codigo personalizado
+# es decir si tenemos N servicios solo se construira el servicio app para
+# produccion
+
+# Se elimino la seccion  de volumes en el servicio app ya que este archivo 
+# es para crear la imagen de producion

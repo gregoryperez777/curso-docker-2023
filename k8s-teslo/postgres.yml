@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15.1
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          # Esto de abajo es para tomar el valor del password desde
+          # postgres-secret
+          valueFrom:
+            secretKeyRef:
+              name: postgre-secrets
+              key: DB_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432 # cualquier puerto
+      targetPort: 5432
+
+# Nota al trata de ejecutar kubectl get all nos dimos cuenta que no estaba instalado
+# lo instalamos siguiendo los pasos de aqui
+
+# https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-binary-with-curl-on-linux
+# existen 3 formas nosotros usamos esta
+
+# Install kubectl binary with curl on Linux
+
+# cuando tratamos de ejecutar el comando de kubectl get all
+# nos dijo 
+
+# E0328 09:08:46.492326   10740 memcache.go:265] couldn't get current server API group list: Get "https://127.0.0.1:38693/api?timeout=32s": dial tcp 127.0.0.1:38693: connect: connection refused
+# The connection to the server 127.0.0.1:38693 was refused - did you specify the right host or port?
+
+# esto ocurre porque arranque minikube desde dockerDesktop
+# se debe arrancar desde la terminal con 
+# minikube start
+# de esta forma arrancar el contenedor y actualiza el port de 127.0.0.1
+# y con eso ya no da el error
+
+# Dejo esta parte pero solo como informativa realmente no fue una solucion
+# Solucion 
+# nano $HOME/.kube/config
+# y editamos esta linea
+
+# server: https://127.0.0.1:38693
+
+# por 
+
+# server: https://127.0.0.1:8000

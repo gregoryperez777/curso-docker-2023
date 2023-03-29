@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  db:
+    container_name: ${MONGO_DB_NAME}
+    image: mongo:6.0
+    volumes:
+      - poke-vol:/data/db
+    # Recomendacion mientras mas aixlados los contenedores mejor 
+    # de esta forma el unico que puede llegarle a la DB es 
+    # el contenedor de mongo-express
+    # ports:
+    #   - 27017:27017
+    restart: always
+    environment:
+      # esto es valido
+      # - MONGO_INITDB_ROOT_USERNAME=mongoadmin
+      # - MONGO_INITDB_ROOT_PASSWORD=secret
+
+      # esto es valido tambien
+      # MONGO_INITDB_ROOT_USERNAME: gregory
+      # MONGO_INITDB_ROOT_PASSWORD: 123456
+
+      # Con variables de entornos
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    
+    # command: indica que cuando se monta la imagen ejecute este comando
+    command: ['--auth']
+
+  mongo-express:
+    depends_on:
+      - db
+    image: mongo-express:1.0.0-alpha.4
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD}
+      ME_CONFIG_MONGODB_SERVER: ${MONGO_DB_NAME}
+    ports:
+      - 8080:8081
+    restart: always
+    
+  pokemon-nest:
+    depends_on:
+      - db
+      - mongo-express
+    image: klerith/pokemon-nest-app:1.0.0
+    environment:
+      MONGODB: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_DB_NAME}:27017
+      DB_NAME: ${MONGO_DB_NAME}
+    ports:
+      - 3000:3000
+    restart: always
+
+
+volumes:
+  poke-vol:
+    external: false
+
+# Nota importante en este ejercicio sucedio que como se habia creado el volumen en la clase pasada
+# las credenciales de las variables de entornos no funcionaban para esto se bajaron los contenedores
+
+# docker compose down 
+
+# y se elimino el volumen creado con anterioridad 
+
+# docker volume rm nombre-del-contenedor
+
+# Luego se levanto el contenedor y todos felices
+
+# cada vez que se crea un volumen se guarda con una configuracion si existe un cambio de configuracion
+# se debe eliminar el volumen anterior y crear uno nuevo
+
+
+# NOTA Importante Con variables de entornos
+
+# NO SE DEBE USAR ESPACIO DENTRO DE ${} ya que le estariamos indicando a docker que busque una variable de entorno con esos configs:
+# espacios 
+
+# ejemplo
+
+# MAL ${ NAME }
+# BIEN ${NAME}

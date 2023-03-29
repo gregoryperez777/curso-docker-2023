@@ -1,0 +1,83 @@
+# multi-stage
+
+# Primer Paso
+
+# Basicamente tenemos un servidor con un alias llamado deps
+# Donde 
+
+# Establecemos el working directory
+# Copiamos el package.json a /app
+# Instalamos todas las dependencias
+
+FROM node:19.2-alpine3.16 as deps
+
+# cd app
+WORKDIR /app
+
+# COPY source dest
+COPY package.json ./
+
+# Para ejecutar un comando desde la terminal
+RUN npm install
+
+# FIN del Primer Paso
+
+# Segundo Paso
+
+# Cada vez que veamos un FROM dentro del mismo Dockerfile
+# es porque estan usando multi-stage
+# y cada vez que nos encontremos un FROM es como si el anterior
+# no existiera es como si aqui arranca nuestro dockerfile
+# pero podemos hacer referencia al paso anterior para obtener
+# cosas que ya existen en el 
+
+FROM node:19.2-alpine3.16 as builder
+
+WORKDIR /app
+
+# De esta forma copiamos desde el stage deps
+# las dependencias que ya estan en el y las pegamos 
+# en node_modules del working directory de esta stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# copia todo el file sistem 
+COPY . .
+
+# Realizar testing
+RUN npm run test
+
+# FIN del Segundo Paso
+
+# Dependencias de produccion
+FROM node:19.2-alpine3.16 as prod-devs
+WORKDIR /app
+RUN npm install --prod
+
+# FIN del Segundo Paso
+
+
+# Tercera Paso
+
+FROM node:19.2-alpine3.16 as runner
+
+WORKDIR /app
+
+# De esta forma copiamos desde el stage prod-devs
+# las dependencias de prod y las pegamos en el working directory 
+# de este stage
+COPY --from=prod-devs /app/node_modules ./node_modules
+
+# copiamos el archivo app.js al working directory
+COPY app.js ./
+
+# copiamos la carpeta tasks
+# en el destino le decimos que debe pegar lo que esta en la carpeta tasks
+# en una carpeta con ese mismo nombre
+# sino no se indica pegaria el contenido de la carpeta tasks en el working 
+# directory
+COPY tasks/ ./tasks
+
+# Comando run de la imagen
+CMD ["node", "app.js"]
+
+# Fin Tercera Paso

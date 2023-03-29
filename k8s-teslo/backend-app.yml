@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: klerith/k8s-teslo-backend:1.1.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: APP_VERSION
+          value: "1.1.0"
+        - name: PORT
+          value: "3000"
+        - name: STAGE
+          value: "prod"
+
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: DB_NAME
+
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: DB_HOST
+        
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: DB_PORT
+
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgre-secrets
+              key: DB_USER
+
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgre-secrets
+              key: DB_PASSWORD
+
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: JWT_SECRET
+              
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: NodePort
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 3000 # cualquier puerto # este es el puerto del cluster 
+      targetPort: 3000 # este es el puerto del pod
+      nodePort: 30300
+
+# Nota al trata de ejecutar kubectl get all nos dimos cuenta que no estaba instalado
+# lo instalamos siguiendo los pasos de aqui
+
+# https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-binary-with-curl-on-linux
+# existen 3 formas nosotros usamos esta
+
+# Install kubectl binary with curl on Linux
+
+# cuando tratamos de ejecutar el comando de kubectl get all
+# nos dijo 
+
+# E0328 09:08:46.492326   10740 memcache.go:265] couldn't get current server API group list: Get "https://127.0.0.1:38693/api?timeout=32s": dial tcp 127.0.0.1:38693: connect: connection refused
+# The connection to the server 127.0.0.1:38693 was refused - did you specify the right host or port?
+
+# esto ocurre porque arranque minikube desde dockerDesktop
+# se debe arrancar desde la terminal con 
+# minikube start
+# de esta forma arrancar el contenedor y actualiza el port de 127.0.0.1
+# y con eso ya no da el error
+
+# Dejo esta parte pero solo como informativa realmente no fue una solucion
+# Solucion 
+# nano $HOME/.kube/config
+# y editamos esta linea
+
+# server: https://127.0.0.1:38693
+
+# por 
+
+# server: https://127.0.0.1:8000

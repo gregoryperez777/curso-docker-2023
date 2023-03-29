@@ -1,0 +1,531 @@
+# version: es la version del docker-compose para que sepa que comando va a poder utilizar
+version: '3'
+
+# Services: dentro de el se declaran los contenedores de aqui en adelante se llaman servicios
+# el orden de las instrucciones dentro del servicio es indiferente siempre y cuando esten al 
+# mismo nivel o indentado a la misma altura
+
+
+# NOTA cada vez que veamos un - significa que es un listado lo que significa que podemos agregar varios items
+# como por ejemplo varios volumenes o varias variables de entorno como en pgAdmin
+services:
+  #db: es el nombre del servicio
+  db:
+    #postgres-database -> nombre del contenedor
+    container_name: postgres-database
+    image: postgres:15.1
+    volumes:
+      # a pesar de que nosotros creamos nuestro volumen a pie (a mano)
+      # docker compose interpreta que postgres usara un volumen llamado 
+      # postgres-db y ese volumen debe estar definido aqui en el 
+      # docker-compose en la seccion volumenes 
+      - postgres-db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=123456
+  
+  #pgAdmin: es el nombre del servicio
+  pgAdmin:
+    depends_on:
+      # El servicio pgAdmin depende de que la DB este arriba
+      # pero se coloca el nombre del servicio y NO del container 
+      - db
+    image: dpage/pgadmin4:6.17
+    ports:
+      - "8080:80"
+    environment:
+      - PGADMIN_DEFAULT_PASSWORD=123456
+      - PGADMIN_DEFAULT_EMAIL=superman@google.com
+
+# existen 2 formas de crear volumenes
+# y se muestran a continuacion
+
+# 1)
+# De esta forma le decimos a docker que cree un nuevo volumen
+# volumenes:
+#   postgres-db:
+
+# 2)
+# De esta forma le decimos a docker que ya existe un volumen externo y que lo use
+# volumenes:
+#   postgres-db:
+#     external: true
+
+# y asi en el servicio db usara el volumen creado a mano
+
+
+# Nota importante:
+
+# Al realizar docker compose up tuve el siguiente error en la consola
+
+# [user@host folder-docker]$ docker compose up
+# [+] Running 0/0
+#  ⠋ app Pulling                                                                                                               0.0s
+# error getting credentials - err: exit status 1, out: error getting credentials - err: exit status 1, out: no usernames for https://index.docker.io/v1/
+
+# encontre la solucion aqui https://forums.docker.com/t/problems-running-docker-compose-up/129188
+
+# SOLO HICE ESTO rm -rf "$HOME/.password-store"
+
+#-----------------------------------------------------------------------------------------
+
+#Ejemplo con Bind volume
+
+version: '3'
+
+services:
+  db:
+    container_name: postgres_database
+    image: postgres:15.1
+    volumes:
+      # utilizando volumen de docker creado a pie
+      # - postgres-db:/var/lib/postgresql/data
+
+      # utilizando bind para enlazar una carpeta local con el volumen del 
+      # contenedor
+      - ./postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=123456
+
+  pgAdmin:
+    depends_on:
+      - db
+    image: dpage/pgadmin4:6.17
+    ports:
+      - "8080:80"
+    volumes:
+      # Carpeta local para pgadmin
+      # esta direccion /var/lib/pgadmin salio del tag de 6.17 de pgadmin en dockerhub
+      # https://hub.docker.com/layers/dpage/pgadmin4/6.17/images/sha256-b04d64352af918043489fca0d95f2a87480238ac5d071fcafd24d6a38f18389d?context=explore
+      # Line 18
+      - ./pgadmin:/var/lib/pgadmin
+    environment:
+      - PGADMIN_DEFAULT_PASSWORD=123456 
+      - PGADMIN_DEFAULT_EMAIL=superman@google.com 
+
+# volumes:
+#   postgres-db:
+#     external: true
+
+# Nota importante
+# Al crear carpetas para realizar el binding desde docker-compose puede darse el caso
+# de obtener errores en la contruccion de los contenedores en este ejercicio 
+# se hizo lo siguiente
+
+# Darles permiso 775  a las 2 carpetas para ello:
+
+# sudo chmod 775 postgres/
+
+# sudo chmod 775 pgadmin/
+
+# al hacer ls -l ambas carpetas deberían tener los siguientes permisos
+
+# drwxrwxr-x
+
+# luego aplicar lo que mostró el profe en clase
+
+# sudo chown -R 5050:5050 pgadmin -> esto salio de aqui https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html#mapped-files-and-directories)
+
+# por ultimo
+
+# docker compose up
+
+
+#Seccion Dockerfile
+
+# construir una imagen
+
+# docker build --tag <nombre_del_tag> <path relativo a donde se encuentra el dockerfile> (si esta ubicado en la terminal en la carpeta donde esta el dockerfile entonces solo es un punto .)
+
+# ejemplo 1
+# docker build --tag cron-ticker .
+
+# ejemplo 2
+# docker build --tag cron-ticker ./path/dir/Dockerfile
+
+# reconstruir una imagen
+
+# por lo general reconstruimos una imagen cuando hay un cambio en el proyecto o en el dockerfile
+
+# en ambos casos al ejecutar el comando de contruir la imagen utilizara los pasos que no han subrido cambios desde la cache 
+# lo que hace que el proceso se mucho mas optimo y recontruira desde el primer comando que sufrio cambios para abajo 
+
+# Al ejecutar el comando de contruir la imagen se iran creando imagenes sin nombres la misma pueden ser renombradas 
+
+# SIN cron-ticker:<nombre de la version> se indica que esta seria mi nueva latest 
+# CON cron-ticker:<nombre de la version> se indica un nombre para el tag que apunta a la ultima latest
+
+# Renombrar una etiqueta
+# es posible renombrar un tag de una imagen seria con el siguiente comando
+# docker image tag name_image:name_tag new_name_image:new_name_tag
+
+# ejemplo
+
+# docker image tag cron-ticker cron-ticker:goku
+
+# Ó
+
+# docker image tag cron-ticker gperez991/cron-ticker
+
+# Recomendacion cuando realizamos una nueva construccion que genere un nuevo latest creemos un tag con otro nombre o cambiale el nombre al latest
+# para que apunte al ultimo latest asi cuando llegue otro latest tendras un nombre apuntando al anterior y un nombre apuntando al actual 
+# y no perderias versiones
+
+# Subir una imagen a DockerHub
+
+# Loguearse en Docker Hub
+# Crear un repo
+# la imagen que quieres subir cambiarle el nombre con el sintaxy de que te da dockerhub
+# ejemplo gperez991/cron-ticker:tagname
+# IMPORTANTE loguearte con el docker login
+
+# AL loguearme tuve problemas nuevamente ya que se vence la key que uno genera:
+# Error saving credentials: error storing credentials - err: exit status 1, out: `error getting credentials - err: exit status 1
+
+# segui estos pasos:
+
+# 1) sudo gpg --generate-key ---> con sudo en mi caso sin el no pude generar nada
+
+# GnuPG needs to construct a user ID to identify your key.
+
+# Real name: Molly
+# Email address: molly@example.com
+# You selected this USER-ID:
+#     "Molly <molly@example.com>"
+
+# Change (N)ame, (E)mail, or (O)kay/(Q)uit? O
+# ...
+# pub   rsa3072 2022-03-31 [SC] [expires: 2024-03-30]
+#       <generated gpg-id public key>
+# uid                      Molly <molly@example.com>
+# sub   rsa3072 2022-03-31 [E] [expires: 2024-03-30]
+
+# 2) pass init <generated gpg-id public key>
+
+# luego de eso me dijo que fue exitoso pero aun no me logueba por terminal pero si en docker desktop
+# por docker desktop trate de subir la imagen pero me dio este error Command failed: docker-credential-desktop get
+# encontre este blog https://cri.dev/posts/2020-07-06-How-to-solve-Docker-docker-credential-desktop-not-installed-or-not-available-in-PATH/
+
+# y basicamente dice esto 
+
+# El problema es que durante la instalación se creó una entrada incorrecta ~/.docker/config.json.
+# Es decir, credsStoreen lugar de credStore.
+# Simplemente cambie la entrada de ~/.docker/config.json de esta manera, y estará listo para comenzar:
+
+# efectivamente estaba asi 
+
+# {
+#   "stackOrchestrator" : "swarm",
+#   "experimental" : "disabled",
+#   "credsStoreen" : "desktop"
+# }
+
+# y lo cambie a configs:
+
+# {
+#   "stackOrchestrator" : "swarm",
+#   "experimental" : "disabled",
+#   "credStoreen" : "desktop"
+# }
+
+# OJO solo cambie credStoreen el resto lo deje igual 
+
+# dockerignore es similar que el gitignore solo que este le dice a docker
+# cuales son los archivos o directorios que no se necesitan dentro de la imagen
+# example los node_modules 
+
+# Plataforma o arquitectura de la imagen
+
+# dentro del Dockerfile podemos especificar la arquitectura para la cual se quiere la imagen
+
+# en la linea uno FROM --platform=arm64 o --platform=linux/amd64 entre otras node:19.2-alpine3.16
+
+# Buildx 
+
+# para hacer uso de Buildx debemos tener abierto docker-desktop de esta forma cuando 
+# hagamos 
+
+# docker buildx ls obtengamos esta salida
+
+# NAME/NODE       DRIVER/ENDPOINT STATUS  BUILDKIT PLATFORMS
+# default         docker                           
+#   default       default         running 23.0.1   linux/amd64, linux/amd64/v2, linux/386
+# desktop-linux * docker                           
+#   desktop-linux desktop-linux   running 20.10.22 linux/amd64, linux/arm64, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/arm/v7, linux/arm/v6
+
+# Ejecutamos  
+# docker buildx create --name mybuilder --driver docker-container --bootstrap
+# debemos obtener esta salida
+
+# [+] Building 1.0s (1/1) FINISHED                                                                                                                                                             
+#  => [internal] booting buildkit                                                                                                                                                         1.0s
+#  => => pulling image moby/buildkit:buildx-stable-1                                                                                                                                      0.0s
+#  => => pulling failed, using local image moby/buildkit:buildx-stable-1                                                                                                                  0.0s 
+#  => => creating container buildx_buildkit_mybuilder0                                                                                                                                    1.0s 
+# mybuilder
+
+# Ejecutamos 
+# docker buildx ls
+
+# NAME/NODE       DRIVER/ENDPOINT  STATUS  BUILDKIT PLATFORMS
+# mybuilder       docker-container                  
+#   mybuilder0    desktop-linux    running v0.11.4  linux/amd64, linux/amd64/v2, linux/arm64, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/mips64le, linux/mips64, linux/arm/v7, linux/arm/v6
+# default         docker                            
+#   default       default          running 23.0.1   linux/amd64, linux/amd64/v2, linux/386
+# desktop-linux * docker                            
+#   desktop-linux desktop-linux    running 20.10.22 linux/amd64, linux/arm64, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/arm/v7, linux/arm/v6
+
+# Ahora vemos que esta herramienta nos permite contruir nuestra imagenes en muchas mas plataformas
+
+# Ya descargamos mybuilder pero no lo estamos usando el contructor por defectos es desktop-linux *
+# por eso tiene el asterisco
+
+# para seleccionarlo ejecutamos
+
+# docker buildx use mybuilder
+
+# Ahora es importante resaltar que docker nos proporciona 2 variables de entornos dentro del Dockerfile
+
+# $BUILDPLATFORM ----> indica todas las plataformas en la que mi buildx va a trabajar
+# $TARGETPLATFORM ----> indica la plataforma actual sobre la cual esta contruyendo
+
+# syntax=docker/dockerfile:1
+# FROM --platform=$BUILDPLATFORM golang:alpine AS build
+# ARG TARGETPLATFORM
+# ARG BUILDPLATFORM
+# RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM" > /log
+# FROM alpine
+# COPY --from=build /log /log
+
+# Ahora para contruir la imagen para varias arquitecturas ejecutamos 
+
+# docker buildx build --platform name_platform1,name_platform2,name_platformN  \
+# -t <username>/<image>:latest --push .
+
+# NOTA todas las plataformas seleccionadas deben ser soportadas por el buildx seleccionado
+
+# ejemplo de la pagina
+# docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 \
+# -t <username>/<image>:latest --push .
+
+# siguiendo el curso quedaria asi
+# dentro de la carpeta del proyecto ejecutar
+
+# docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 \
+# -t gperez991/cron-ticker --push .
+
+# Recomendacion cada vez que creemos un tag para una version de nuestra image
+# con multiples plataforma ejecutemos el mismo comando sin el tag para crear 
+# el nuevo latest
+
+# ejemplo
+
+# docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 \
+# -t gperez991/cron-ticker:DBZ --push .
+
+# esto crearia un tag llamado DBZ con estas arquitecturas linux/amd64,linux/arm64,linux/arm/v7
+
+# pero este tag estaria por encima del ultimo latest para esto ejecutamos lo siguiente
+
+# docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 \
+# -t gperez991/cron-ticker --push .
+
+# y de esta forma generar el nuevo latest
+
+# Nota hay arquitecturas que pueden generar problemas al momento de contruir la imagen 
+
+# ------
+#  > [linux/mips64le internal] load metadata for docker.io/library/node:19.2-alpine3.16:
+# ------
+# ------
+#  > [linux/mips64 internal] load metadata for docker.io/library/node:19.2-alpine3.16:
+# ------
+# ------
+#  > [linux/riscv64 internal] load metadata for docker.io/library/node:19.2-alpine3.16:
+# ------
+# Dockerfile:22
+# --------------------
+#   20 |     
+#   21 |     # Ejecutar la APP
+#   22 | >>> FROM node:19.2-alpine3.16 as runner
+#   23 |     WORKDIR /app
+#   24 |     COPY --from=prod-devs /app/node_modules ./node_modules
+# --------------------
+
+# o
+
+# => ERROR [linux/386 internal] load metadata for docker.io/library/node:19.2-alpine3.16                                                                                                 0.8s
+#  => CANCELED [linux/s390x internal] load metadata for docker.io/library/node:19.2-alpine3.16                                                                                            0.9s
+#  => CANCELED [linux/ppc64le internal] load metadata for docker.io/library/node:19.2-alpine3.16                                                                                          0.9s
+#  => [linux/arm/v6 internal] load metadata for docker.io/library/node:19.2-alpine3.16                                                                                                    0.9s
+#  => [auth] library/node:pull token for registry-1.docker.io                                                                                                                             0.0s
+# ------                                                                                                                                                                                       
+#  > [linux/386 internal] load metadata for docker.io/library/node:19.2-alpine3.16:
+# ------
+# Dockerfile:22
+# --------------------
+#   20 |     
+#   21 |     # Ejecutar la APP
+#   22 | >>> FROM node:19.2-alpine3.16 as runner
+#   23 |     WORKDIR /app
+#   24 |     COPY --from=prod-devs /app/node_modules ./node_modules
+# --------------------
+
+# para solventar esto elimine esas plataformas del comando de contruccion 
+# las que dan problemas son las señaladas de esta manera
+
+# ------ 
+# >
+# ------
+
+# linux/mips64le
+# linux/mips64
+# linux/riscv64
+# linux/386
+
+# al eliminar esas arquitecturas pude hacer que se construyeran las demas 
+
+# docker buildx build --platform linux/amd64,linux/amd64/v2,linux/arm64,linux/ppc64le,linux/s390x -t gperez991/cron-ticker:gato-test --push .
+
+# ver para que plataforma se construyo una imagen a traves de docker buildx
+
+# docker buildx imagetools inspect <username>/<image>:tag
+
+# obtendriamos algo como 
+
+# Name:      docker.io/gperez991/cron-ticker:gato
+# MediaType: application/vnd.oci.image.index.v1+json
+# Digest:    sha256:8fb70a461a133f46aefbbf0a0c5753125ca272d8a19308ce525f85cc4ff4fc3e
+           
+# Manifests: 
+#   Name:        docker.io/gperez991/cron-ticker:gato@sha256:39aec3ab816fd1d626a2f2bd90b172e3cf88a4387b0fbeab265e808c35e16929
+#   MediaType:   application/vnd.oci.image.manifest.v1+json
+#   Platform:    linux/amd64
+               
+#   Name:        docker.io/gperez991/cron-ticker:gato@sha256:cc6da13f75492a42834eef8e80afddc8e1c9a18aa249ebf3d8c6102c9711556b
+#   MediaType:   application/vnd.oci.image.manifest.v1+json
+#   Platform:    linux/amd64/v2
+               
+#   Name:        docker.io/gperez991/cron-ticker:gato@sha256:b2198bc64a2b32025c7a1d75dda19859984997acb3e547e945e0cf192ec8c828
+#   MediaType:   application/vnd.oci.image.manifest.v1+json
+#   Platform:    linux/arm64
+               
+#   Name:        docker.io/gperez991/cron-ticker:gato@sha256:fab84816d326e23f36bc2d9758514c0ef1ba08d5bfdbd91ed968caca260b7d1a
+#   MediaType:   application/vnd.oci.image.manifest.v1+json
+#   Platform:    unknown/unknown
+#   Annotations: 
+#     vnd.docker.reference.digest: sha256:39aec3ab816fd1d626a2f2bd90b172e3cf88a4387b0fbeab265e808c35e16929
+#     vnd.docker.reference.type:   attestation-manifest
+               
+#   Name:        docker.io/gperez991/cron-ticker:gato@sha256:ed19557006fbbbcb904793f36a071cfe36ccaf1f62928952eac498a691b9aca3
+#   MediaType:   application/vnd.oci.image.manifest.v1+json
+#   Platform:    unknown/unknown
+#   Annotations: 
+#     vnd.docker.reference.type:   attestation-manifest
+#     vnd.docker.reference.digest: sha256:cc6da13f75492a42834eef8e80afddc8e1c9a18aa249ebf3d8c6102c9711556b
+               
+#   Name:        docker.io/gperez991/cron-ticker:gato@sha256:a0cd0c0c8e364cdc01276f4667ad25ffa952dfe0c70cda2ec7c83732402883bf
+#   MediaType:   application/vnd.oci.image.manifest.v1+json
+#   Platform:    unknown/unknown
+#   Annotations: 
+#     vnd.docker.reference.digest: sha256:b2198bc64a2b32025c7a1d75dda19859984997acb3e547e945e0cf192ec8c828
+#     vnd.docker.reference.type:   attestation-manifest
+
+
+# Para subir nuestra imagen a Digital Ocean 
+
+# ir a menu lateral container registry   
+
+# Crear un registro con nombre unico 
+
+# una vez creado en el paso 2 seleccionar la pestaña API TOKEN
+
+# crear un token 
+
+# utilizar docker login registry.digitalocean.com
+
+# te solicitara usuario y password
+# usuario: ingresa el token  
+# password: ingresa el token
+
+# Token digital ocean
+
+# dop_v1_9158e3657c83f84108055cd8502afb204c512fe60c974905b00af0ce1251a8d5
+
+
+# Al tratar de correr una imagen como esta
+# docker container run -p 3000:3000 gperez991/docker-grapql:0.0.1
+
+# que era completamente nueva me lanzaba este error
+
+# docker: Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:3000 -> 0.0.0.0:0: listen tcp 0.0.0.0:3000: bind: address already in use.
+# ERRO[0000] error waiting for container: 
+
+# asi que averigue quien ocupaba el puerto
+# Para mostrar que proceso esta ocupado el puerto 3000
+# sudo netstat -pna | grep 3000
+
+# ejemplo de la respuesta 
+# tcp        0      0 0.0.0.0:3000            0.0.0.0:*               ESCUCHAR    52534/docker-proxy  
+# tcp6       0      0 :::3000                 :::*                    ESCUCHAR    52542/docker-proxy
+
+# Ahora para solventar esto llegue a este link configs:
+# https://stackoverflow.com/questions/39130263/docker-proxy-using-port-when-no-containers-are-running
+
+# sugeria esto y funciono
+
+# sudo service docker stop
+# sudo rm -f /var/lib/docker/network/files/local-kv.db
+# sudo service docker start
+
+# Un dia prendi la PC y no podia ejecutar instrucciones de docker engine desde la terminal 
+# solo podia si tenia docker desktop activo
+# y recorde que no era asi antes que aunque no tuviera docker desktop activo yo podia ejecutar 
+# comando de docker desde la terminal
+ 
+# al tratar de ejecutar cualquier comando 
+#
+# ejemplo 
+#
+# docker image ls 
+# o
+# docker container ls 
+#
+# Recibia este mensaje 
+# docker: Cannot connect to the Docker daemon at unix:///home/gregory/.docker/desktop/docker.sock. 
+# Is the docker daemon running?.
+
+# Note que a pesar de que estaba ejecutando un comando desde la terminal que deberia ser para docker engine la 
+# direccion que me indicaba para el demonio era la de docker desktop
+
+# Despues de mucho investigar 
+# Descubri que cuando usamos docker y docker desktop estos pueden corren en paralelo en la misma maquina
+# pero al instalar docker desktop este corre en una VM y ademas crea su propio contexto para no interferir 
+# con el contexto de Docker engine 
+
+# Entonces lo que ocurrio aqui fue que por alguna razon la pc seteo el contexto de docker desktop por default
+# y no el de docker engine y por eso no podia ejecutar ningun comando 
+
+# Tambien descubri que cuando abrimos docker desktop inmediatamente se ejecuta un cambios de contexto
+# al igual que cuando lo cierras se ejecuta un cambio de contexto 
+# lo que me hace pensar que el dia anterior algun proceso no se ejecuto correctamente y por eso no 
+# al cerrar docker desktop no regreso el contexto al docker engine
+
+# Para ver los contextos en mi sistema usamos
+
+# docker context ls
+
+# NAME                TYPE                DESCRIPTION                               DOCKER ENDPOINT                                    KUBERNETES ENDPOINT   ORCHESTRATOR                      
+# default             moby                Current DOCKER_HOST based configuration   unix:///var/run/docker.sock                                                                                
+# desktop-linux *     moby                                                          unix:///home/gregory/.docker/desktop/docker.sock             
+
+# para cambiarlo 
+
+# docker context use <nombre_del_contexto> 
+
+# En mi caso 
+
+# docker context use default
+
+# Ref https://docs.docker.com/desktop/faqs/linuxfaqs/#what-is-the-difference-between-docker-desktop-for-linux-and-docker-engine
+
+

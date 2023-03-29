@@ -1,0 +1,265 @@
+Comando 
+
+Descargar imagen
+docker pull <imagen> ----> baja una imagen
+
+Arrancar imagen 
+docker container run imagen ----> arranca la imagen
+
+Nota: al arrancar la imagen con este comando creara cada vez un nuevo container
+
+Listar contenedores 
+
+docker container ls     ----> este comando mostrara containers activos en el momento
+docker container ls -a  ----> este comando mostrara todos containers
+
+Eliminar container 
+
+Nota del los ID del container podemos tomar los 3 primeros digitos
+
+docker container stop <ID del container> o docker container stop <ID del container 1> <ID del container 2> ... <ID del container N> ----> Detendra el container o los containers
+docker container rm <ID del container> o docker container rm <ID del container 1> <ID del container 2> ... <ID del container N> ----> Eliminara el container o los containers
+docker container prune ----> Elimina todos los container detenidos
+
+Listar images
+
+images (para tratarlas todas)
+image (para una imagen)
+
+// aqui puedes buscar las diferencias
+docker images --help
+docker image --help
+
+docker images ls ----> este comando mostrara todas las imagenes
+docker image 
+
+Eliminar images
+
+docker image rm <ID de la imagen>
+
+Arrancar contenedor en modo Detached
+
+docker container run -d <nombre del contenedor> ----> corre el contenedor de forma desenlazada de la terminal es decir que lo ejecuta y puedes seguir trabajando sobre la misma terminal
+
+Arrancar contenedor en modo Detached y publicar puerto
+
+docker container run -d -p PortMiPC:PortContainer <nombre del contenedor>  ----> corre el contenedor de forma desenlazada de la terminal es decir que lo ejecuta y puedes seguir trabajando sobre la misma terminal y
+ademas publica el puerto de nuestra pc con el puerto del contenedor
+
+Arrancar contenedor en modo Detached y publicar puerto FORMA CORTA
+
+docker container run -dp PortMiPC:PortContainer <nombre del contenedor>
+
+Logs
+
+docker container logs <ID Container> ----> Logs de ese contenedor
+docker container logs -f <ID Container> ----> Logs de ese contenedor y seguimiento de lo que pasa en tiempo real
+
+
+Ejecutar comandos con \
+
+example for create a container mariadb
+ 
+docker container run \
+--name world-db \ ----> para colocarle un nombre al contenedor
+-e MARIADB_USER=greg \ ----> una variable de entorno del contenedor se puede usar -e o --env
+-e MARIADB_PASSWORD=123456789 \ ----> una variable de entorno del contenedor se puede usar -e o --env
+-e MARIADB_ROOT_PASSWORD=root-secret \ ----> una variable de entorno del contenedor se puede usar -e o --env
+-e MARIADB_DATABASE=world-db \ ----> una variable de entorno del contenedor se puede usar -e o --env
+-dp 3306:3306 \ ----> modo desenlazado y puertos 3306 tanto de la pc como el contenedor
+mariadb:jammy ----> nombre de la imagen con la version jammy
+
+docker container run --name world-db -e MARIADB_USER=greg -e MARIADB_PASSWORD=123456789 -e MARIADB_ROOT_PASSWORD=root-secret -e MARIADB_DATABASE=world-db -dp 3306:3306 mariadb:jammy
+
+
+Agregando volume
+
+volume: crea un espacio en la pc local que va hacer persistente donde se almacena data 
+como la data de la db o dbs entre otras cosas
+
+uso: se usa para que cuando se tumbe, elimine o reinicie un contenedor nuestra data permanezca intacta 
+
+Nota: cuando se crea el contenedor se le debe pasar el volumen al que esta asociado 
+
+existen 3 tipos de volumenes
+
+name volume ----> Tu seleccionas el nombre del volumen
+bind volume ----> vincula un filesystem de nuestro equipo con una filesystem propio del contenedor
+anonymous volume ----> Docker selecciona un nombre unico para ese volumen
+
+docker container run \
+--name world-db \
+-e MARIADB_USER=greg \
+-e MARIADB_PASSWORD=123456789 \
+-e MARIADB_ROOT_PASSWORD=root-secret \
+-e MARIADB_DATABASE=world-db \
+-dp 3306:3306 \
+--volume world-db:/var/lib/mysql \ ----> volumenPCLocal:volumeContenedor | --volume || -v
+mariadb:jammy
+
+
+Nota IMPORTANTE el volumeContenedor se debe buscar en dockerHub en la documentacion de la imagen que estas usando
+
+phpmyadmin:5.2-apache
+
+docker container run \
+--name phpmyadmin \
+-d \
+-e PMA_ARBITRARY=1 \
+-p 8080:80 \
+phpmyadmin:5.2-apache
+
+Agregando Network
+
+
+crear una Red
+docker network create <nombre-de-la-red>
+
+agregar contenedores a la red creada
+docker network connect <nombre-de-la-red-creada> <ID-contenedor-1>
+docker network connect <nombre-de-la-red-creada> <ID-contenedor-2>
+.
+.
+.
+docker network connect <nombre-de-la-red-creada> <ID-contenedor-N>
+
+Inspeccionar contenedores agregados a la Red
+
+docker network inspect world-app
+
+example de resultado
+
+[
+    {
+        "Name": "world-app",
+        "Id": "eaaaaadafe9f831fb4e2dc59e76e867a527febc740071b6f170947b2dd4b9a7f",
+        "Created": "2023-02-26T21:02:50.483374533Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "Gateway": "172.18.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "98d6b50db0abb23d21bea2167d4316191f752c9ca42f30b7bab1a77d35e6b02b": {
+                "Name": "phpmyadmin",
+                "EndpointID": "3953085ce768be32b1d14c0c5c788985e5fb958782bb1e3772a3e33a47f996f5",
+                "MacAddress": "02:42:ac:12:00:02",
+                "IPv4Address": "172.18.0.2/16",
+                "IPv6Address": ""
+            },
+            "b245feef563d4b2b37a30d2ec812807047fc2bb91ebb7e1360c6745796833e2c": {
+                "Name": "world-db",
+                "EndpointID": "595bb067469ba8dd5428fb99ac023f984ebd2ec6d27c4b860c2a52f24095a88d",
+                "MacAddress": "02:42:ac:12:00:03",
+                "IPv4Address": "172.18.0.3/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {},
+        "Labels": {}
+    }
+]
+
+
+Agregando red desde la creacion del contenedor
+
+docker container run \
+--name world-db \
+-e MARIADB_USER=greg \
+-e MARIADB_PASSWORD=123456789 \
+-e MARIADB_ROOT_PASSWORD=root-secret \
+-e MARIADB_DATABASE=world-db \
+-dp 3306:3306 \
+--volume world-db:/var/lib/mysql \
+--network world-app \
+mariadb:jammy
+
+docker container run \
+--name phpmyadmin \
+-d \
+-e PMA_ARBITRARY=1 \
+-p 8080:80 \
+--network world-app \
+phpmyadmin:5.2-apache
+
+Haciendo uso de bind
+
+docker container run \
+--name nest-app \
+-w /app \
+-p 80:3000 \
+-v "$(pwd)":/app \
+node:16-alpine3.17 \
+sh -c "yarn install && yarn start:dev"
+
+se agrego -d
+docker container run \
+--name nest-app \
+-w /app \
+-dp 80:3000 \
+-v "$(pwd)":/app \
+node:16-alpine3.17 \
+sh -c "yarn install && yarn start:dev"
+
+
+Nota cuando no usamos -d al crear el contenedor no podemos matar la terminal con ctrl + c
+para poder matarla pero ver la informacion del contenedor usamos -d al momento de arrancar 
+el contenedor y docker container logs -f <ID-CONTENEDOR> y alli si podemos matar la terminal
+
+En este caso el -f significa follow para que se quede viendo el log
+
+Terminal Interactiva (-it) (Entrar dentro del contenedor)
+
+Basicamente ingresa dentro del contenedor
+
+docker exec -it <ID-contenedor> <execute>
+
+ejemplo
+
+docker exec -it b12 bash 
+ó
+docker exec -it b12 /bin/sh
+
+Tarea
+
+docker container run \
+-d \
+--name postgres-db \
+-e POSTGRES_PASSWORD=123456 \
+-v postgres-db:/var/lib/postgresql/data \
+postgres:15.1
+
+creando docker-compose
+
+1- creamos un archivo docker-compose.yml
+
+// Siempre se inicia indicando la version de docker que estamos usando
+version: '3'
+
+
+NOTA IMPORTANTE al realizar un cambio sobre el docker-compose.yml
+puede ocurrir que no se tome el cambio y hay que realizar limpieza
+como puede que lo tome de una
+
+Para realizar la limpieza usamos 
+
+docker compose down ---> Stop and remove containers, networks (como bien dice remueve contenedores y redes creadas con el docker compose)
+
+NOTA: al usar docker-compose los contenedores son nombrados bajo una sintaxis de docker
+
+
